@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>CryptoPay UPI (Demo)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .card {
+      background: #020617;
+      padding: 24px;
+      border-radius: 10px;
+      width: 320px;
+    }
+    input,
+    textarea,
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: none;
+    }
+    textarea {
+      resize: none;
+    }
+    button {
+      background: #22c55e;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    pre {
+      background: #020617;
+      padding: 10px;
+      margin-top: 15px;
+      font-size: 12px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- STEP 41 — Demo banner -->
+  <div style="
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: #f59e0b;
+    color: #020617;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 1000;
+  ">
+    DEMO · SIMULATION
+  </div>
+
+  <div class="card">
+    <h2>CryptoPay UPI</h2>
+    <p style="font-size:12px; opacity:0.75; margin-top:4px;">
+      Demo prototype — no real crypto or UPI transfers occur.
+    </p>
+
+    <!-- STEP 27 — QR text input -->
+    <textarea
+      id="qrtext"
+      placeholder="Paste UPI QR text here (optional)"
+      style="height:60px; margin-bottom:10px;"
+    ></textarea>
+
+    <button onclick="parseQR()">Parse QR</button>
+
+    <!-- STEP 30 — QR image input -->
+    <input type="file" id="qrimage" accept="image/*" />
+    <button onclick="scanQRImage()">Scan QR Image</button>
+
+    <!-- Inputs -->
+    <input id="upi" placeholder="Enter UPI ID" />
+    <input id="amount" type="number" placeholder="Crypto amount (USDT)" />
+
+    <button onclick="pay()">Pay</button>
+
+    <pre id="result"></pre>
+
+    <!-- STEP 39.1 — Transaction history -->
+    <h3 style="margin-top:20px;">Recent Transactions</h3>
+    <div id="history"></div>
+
+    <!-- STEP 43 — Footer copy -->
+    <p style="font-size:11px; opacity:0.5; margin-top:16px; text-align:center;">
+      Built as a proof-of-concept for crypto → UPI payments.
+    </p>
+  </div>
+
+  <script src="app.js"></script>
+
+  <!-- STEP 31 — QR decoder -->
+  <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+</body>
+</html>

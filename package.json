@@ -1,0 +1,27 @@
+{
+  "name": "cryptopay-upi-prototype",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rajeshlan/cryptopay-upi-prototype.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rajeshlan/cryptopay-upi-prototype/issues"
+  },
+  "homepage": "https://github.com/rajeshlan/cryptopay-upi-prototype#readme",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "pg": "^8.17.2",
+    "uuid": "^13.0.0"
+  }
+}
