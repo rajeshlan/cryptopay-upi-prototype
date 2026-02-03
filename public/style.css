@@ -1,0 +1,301 @@
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #0f172a;
+  color: #e5e7eb;
+  overflow-y: auto;
+}
+
+.container {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 20px 0 40px;
+}
+
+.card {
+  background: #020617;
+  padding: 24px;
+  border-radius: 10px;
+}
+
+input,
+textarea,
+button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 6px;
+  border: none;
+}
+
+button {
+  background: #22c55e;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+pre {
+  background: #020617;
+  padding: 10px;
+  font-size: 12px;
+  overflow-x: auto;
+}
+
+.demo-badge {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: #f59e0b;
+  color: #020617;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* ──────────────────────────────────────────────── */
+/* 🔔 Legacy inline execution text                 */
+/* ──────────────────────────────────────────────── */
+
+.latest-status.success {
+  color: #22c55e;
+}
+
+.latest-status.error {
+  color: #ef4444;
+}
+
+.latest-status.pending {
+  color: #facc15;
+}
+
+/* ──────────────────────────────────────────────── */
+/* 🚦 Execution Status Pill (Primary UX)            */
+/* ──────────────────────────────────────────────── */
+
+.status-pill {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.status-pill.idle {
+  background: #333;
+  color: #aaa;
+}
+
+.status-pill.pending {
+  background: #1e3a8a;
+  color: #93c5fd;
+}
+
+.status-pill.success {
+  background: #064e3b;
+  color: #6ee7b7;
+}
+
+.status-pill.error {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+/* ──────────────────────────────────────────────── */
+/* 🪜 Execution Progress Ladder                    */
+/* ──────────────────────────────────────────────── */
+
+.progress-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.progress-step {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #1f2937;
+  color: #9ca3af;
+}
+
+.progress-step.active {
+  background: #2563eb;
+  color: white;
+}
+
+.progress-step.done {
+  background: #16a34a;
+  color: white;
+}
+
+/* ✅ STEP 15.2.4 — Small polish */
+.progress-step em {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.progress-step small {
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+/* ──────────────────────────────────────────────── */
+/* 🏷️ Execution State Badges (Cards)               */
+/* ──────────────────────────────────────────────── */
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.badge-idle {
+  background: #444;
+  color: #fff;
+}
+
+.badge-pending {
+  background: #facc15;
+  color: #000;
+}
+
+.badge-success {
+  background: #22c55e;
+  color: #000;
+}
+
+.badge-failed {
+  background: #ef4444;
+  color: #fff;
+}
+
+/* ──────────────────────────────────────────────── */
+/* ❌ Error UI                                     */
+/* ──────────────────────────────────────────────── */
+
+.error-box {
+  background: #3b0d0d;
+  color: #ff9e9e;
+  padding: 8px;
+  border-radius: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+/* ──────────────────────────────────────────────── */
+/* 🔁 Retry Button (Polished)                      */
+/* ──────────────────────────────────────────────── */
+
+.retry-btn {
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #facc15;
+  color: #000;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* ──────────────────────────────────────────────── */
+/* 🧾 Transaction cards                            */
+/* ──────────────────────────────────────────────── */
+
+.tx-card {
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  padding: 10px;
+  margin-top: 12px;
+}
+
+.execution-row {
+  margin-top: 6px;
+}
+
+/* ──────────────────────────────────────────────── */
+/* 🧠 Execution Timeline                           */
+/* ──────────────────────────────────────────────── */
+
+.timeline-wrapper {
+  margin-top: 10px;
+}
+
+.timeline {
+  margin-top: 8px;
+  border-left: 2px solid #1f2937;
+  padding-left: 10px;
+}
+
+.timeline-row {
+  margin-bottom: 10px;
+}
+
+.timeline-state {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.timeline-reason {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.timeline-time {
+  font-size: 11px;
+  opacity: 0.5;
+}
+
+.timeline-empty {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* ──────────────────────────────────────────────── */
+/* 🧠 Timeline Modal                               */
+/* ──────────────────────────────────────────────── */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: #020617;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 420px;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+}
+
+.modal-content button {
+  margin-top: 12px;
+}
+
+/* ──────────────────────────────────────────────── */
+/* 🧩 Footer                                       */
+/* ──────────────────────────────────────────────── */
+
+.footer {
+  font-size: 11px;
+  opacity: 0.5;
+  margin-top: 16px;
+  text-align: center;
+}

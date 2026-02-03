@@ -1,25 +1,24 @@
+// routes/transactions.js
 const express = require("express");
 const router = express.Router();
 const pool = require("../config/db");
 
 router.get("/", async (req, res) => {
-  const limit = Number(req.query.limit) || 10;
+  const limit = Number(req.query.limit || 10);
 
   try {
     const { rows } = await pool.query(
       `
       SELECT
-        t.id,
-        t.crypto_amount,
-        t.inr_amount,
-        t.rate_used,
-        t.created_at,
-        p.upi_id,
-        p.status AS payout_status
-      FROM transactions t
-      LEFT JOIN payouts p
-        ON p.transaction_id = t.id
-      ORDER BY t.created_at DESC
+        id,
+        upi_id,
+        crypto_amount,
+        inr_amount,
+        rate_used,
+        execution_state,
+        created_at
+      FROM transactions
+      ORDER BY created_at DESC
       LIMIT $1
       `,
       [limit]
@@ -27,8 +26,10 @@ router.get("/", async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Failed to fetch transactions" });
+    console.error("[TRANSACTIONS FETCH ERROR]", err);
+    res.status(500).json({
+      error: "failed_to_fetch_transactions",
+    });
   }
 });
 

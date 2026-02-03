@@ -1,108 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>CryptoPay UPI (Demo)</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .card {
-      background: #020617;
-      padding: 24px;
-      border-radius: 10px;
-      width: 320px;
-    }
-    input,
-    textarea,
-    button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border-radius: 6px;
-      border: none;
-    }
-    textarea {
-      resize: none;
-    }
-    button {
-      background: #22c55e;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    pre {
-      background: #020617;
-      padding: 10px;
-      margin-top: 15px;
-      font-size: 12px;
-      overflow-x: auto;
-    }
-  </style>
+
+  <!-- ✅ Dummy favicon to silence 404 -->
+  <link rel="icon" href="data:," />
+
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- STEP 41 — Demo banner -->
-  <div style="
-    position: fixed;
-    top: 10px;
-    right: 10px;
-    background: #f59e0b;
-    color: #020617;
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: bold;
-    z-index: 1000;
-  ">
-    DEMO · SIMULATION
-  </div>
+<div class="demo-badge">DEMO · SIMULATION</div>
 
+<div class="container">
   <div class="card">
     <h2>CryptoPay UPI</h2>
-    <p style="font-size:12px; opacity:0.75; margin-top:4px;">
-      Demo prototype — no real crypto or UPI transfers occur.
-    </p>
+    <p class="subtitle">Demo prototype — no real transfers occur.</p>
 
-    <!-- STEP 27 — QR text input -->
+    <!-- Demo Wallet Balance -->
+    <div
+      id="walletBox"
+      style="
+        margin-top:10px;
+        padding:8px;
+        border-radius:6px;
+        background:#020617;
+        font-size:13px;
+      "
+    >
+      💰 Demo Wallet (INR): <b>Loading...</b>
+    </div>
+
+    <!-- Execution Status -->
+    <div id="executionStatus" class="status-pill idle">
+      ⏸ Idle
+    </div>
+
     <textarea
       id="qrtext"
-      placeholder="Paste UPI QR text here (optional)"
-      style="height:60px; margin-bottom:10px;"
+      placeholder="Paste UPI QR text (optional)"
     ></textarea>
 
     <button onclick="parseQR()">Parse QR</button>
 
-    <!-- STEP 30 — QR image input -->
     <input type="file" id="qrimage" accept="image/*" />
     <button onclick="scanQRImage()">Scan QR Image</button>
 
-    <!-- Inputs -->
     <input id="upi" placeholder="Enter UPI ID" />
-    <input id="amount" type="number" placeholder="Crypto amount (USDT)" />
+    <input
+      id="amount"
+      type="number"
+      placeholder="Crypto amount (USDT)"
+    />
 
     <button onclick="pay()">Pay</button>
 
     <pre id="result"></pre>
 
-    <!-- STEP 39.1 — Transaction history -->
-    <h3 style="margin-top:20px;">Recent Transactions</h3>
+    <div class="status-box">
+      Status:
+      <span class="latest-status pending">IDLE</span>
+    </div>
+
+    <h3>Recent Transactions</h3>
     <div id="history"></div>
 
-    <!-- STEP 43 — Footer copy -->
-    <p style="font-size:11px; opacity:0.5; margin-top:16px; text-align:center;">
-      Built as a proof-of-concept for crypto → UPI payments.
-    </p>
+    <p class="footer">Proof-of-concept · Crypto → UPI</p>
   </div>
+</div>
 
-  <script src="app.js"></script>
+<!-- 🧠 Execution Timeline Modal -->
+<div id="timelineModal" class="modal hidden">
+  <div class="modal-content">
+    <h3>Execution Timeline</h3>
+    <div id="timelineBody"></div>
+    <button onclick="closeTimeline()">Close</button>
+  </div>
+</div>
 
-  <!-- STEP 31 — QR decoder -->
-  <script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+<!-- 🔐 REQUIRED: CryptoJS (MUST LOAD FIRST) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+
+<!-- 📷 QR Decoder -->
+<script src="https://unpkg.com/jsqr/dist/jsQR.js"></script>
+
+<!-- 🚀 App Logic (LAST) -->
+<script src="app.js"></script>
+
 </body>
 </html>

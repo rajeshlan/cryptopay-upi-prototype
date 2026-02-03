@@ -1,17 +1,171 @@
-// public/app.js
+console.log("app.js loaded");
 
-async function scanQRImage() {
-  const fileInput = document.getElementById("qrimage");
-  const upiInput = document.getElementById("upi");
+/* ================================
+   CONFIG
+================================ */
+const DEMO_USER_ID = "6364eeb3-a710-4df6-b546-b80adabe1c75";
 
-  if (!fileInput.files.length) {
-    alert("Select a QR image first");
+let currentBalance = 0;
+let currentRate = null;
+let activeTxId = null;
+let pollingTimer = null;
+
+/* ================================
+   STATUS NORMALIZER (FIX)
+================================ */
+function renderStatus(state) {
+  if (!state) return "UNKNOWN";
+
+  switch (state) {
+    case "CREATED":
+      return "CREATED";
+
+    case "RATE_LOCKED":
+    case "CONVERSION_PENDING":
+      return "PROCESSING";
+
+    case "CONVERSION_CONFIRMED":
+    case "PAYOUT_PENDING":
+      return "PAYMENT_IN_PROGRESS";
+
+    case "PAYOUT_SUCCESS":
+      return "SUCCESS";
+
+    case "PAYOUT_FAILED":
+    case "CONVERSION_FAILED":
+      return "FAILED";
+
+    default:
+      return state;
+  }
+}
+
+/* ================================
+   UI HELPERS
+================================ */
+function setExecutionStatus(rawState) {
+  const pill = document.getElementById("executionStatus");
+  if (!pill) return;
+
+  const state = renderStatus(rawState);
+  pill.className = "status-pill";
+
+  if (state === "UNKNOWN") {
+    pill.classList.add("idle");
+    pill.textContent = "⏸ Idle";
     return;
   }
 
+  if (state === "SUCCESS") {
+    pill.classList.add("success");
+    pill.textContent = "✅ Payment Successful";
+    return;
+  }
+
+  if (state === "FAILED") {
+    pill.classList.add("error");
+    pill.textContent = "❌ Payment Failed";
+    return;
+  }
+
+  pill.classList.add("pending");
+  pill.textContent = `⏳ ${state.replaceAll("_", " ")}`;
+}
+
+function lockPayButton(lock) {
+  const btn = document.querySelector("button[onclick='pay()']");
+  if (!btn) return;
+  btn.disabled = lock;
+  btn.style.opacity = lock ? 0.6 : 1;
+}
+
+/* ================================
+   DEMO WALLET
+================================ */
+async function loadDemoBalance() {
+  try {
+    const res = await fetch(`/demo/wallet/${DEMO_USER_ID}`);
+    const data = await res.json();
+
+    currentBalance = data.balance || 0;
+    document.getElementById("walletBox").innerHTML =
+      `💰 Demo Wallet (INR): <b>₹${currentBalance}</b>`;
+  } catch {
+    document.getElementById("walletBox").innerHTML =
+      `💰 Demo Wallet (INR): <b>Error</b>`;
+  }
+}
+
+/* ================================
+   RATE
+================================ */
+async function loadLiveRate() {
+  const res = await fetch("/rate/usdt-inr");
+  const data = await res.json();
+  currentRate = Number(data.rate);
+}
+
+/* ================================
+   EXECUTION POLLING
+================================ */
+function pollExecutionState(txId) {
+  if (pollingTimer) clearInterval(pollingTimer);
+
+  pollingTimer = setInterval(async () => {
+    const res = await fetch(`/execution/${txId}/status`);
+    const { state } = await res.json();
+
+    setExecutionStatus(state);
+
+    const normalized = renderStatus(state);
+    if (normalized === "SUCCESS" || normalized === "FAILED") {
+      clearInterval(pollingTimer);
+      pollingTimer = null;
+      activeTxId = null;
+
+      lockPayButton(false);
+      loadDemoBalance();
+      loadHistory();
+    }
+  }, 1500);
+}
+
+/* ================================
+   QR HELPERS
+================================ */
+function extractUpiAndAmount(raw) {
+  try {
+    if (!raw) return {};
+    const query = raw.includes("?") ? raw.split("?")[1] : raw;
+    const params = new URLSearchParams(query);
+
+    return {
+      upi: params.get("pa"),
+      amount: params.get("am"),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function parseQR() {
+  const qrText = document.getElementById("qrtext").value;
+  if (!qrText) return alert("Paste QR text first");
+
+  const { upi, amount } = extractUpiAndAmount(qrText);
+  if (!upi) return alert("Invalid UPI QR text");
+
+  document.getElementById("upi").value = upi;
+  if (amount) document.getElementById("amount").value = amount;
+}
+
+function scanQRImage() {
+  const fileInput = document.getElementById("qrimage");
+  if (!fileInput.files.length) return alert("Select a QR image first");
+
   const file = fileInput.files[0];
-  const img = new Image();
   const reader = new FileReader();
+  const img = new Image();
 
   reader.onload = () => {
     img.onload = () => {
@@ -25,24 +179,13 @@ async function scanQRImage() {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, canvas.width, canvas.height);
 
-      if (!code) {
-        alert("QR not detected");
-        return;
-      }
+      if (!code) return alert("QR not detected");
 
-      try {
-        const params = new URL(code.data).searchParams;
-        const upiId = params.get("pa");
+      const { upi, amount } = extractUpiAndAmount(code.data);
+      if (!upi) return alert("Invalid UPI QR");
 
-        if (!upiId) {
-          alert("UPI ID not found in QR");
-          return;
-        }
-
-        upiInput.value = upiId;
-      } catch {
-        alert("Invalid QR format");
-      }
+      document.getElementById("upi").value = upi;
+      if (amount) document.getElementById("amount").value = amount;
     };
 
     img.src = reader.result;
@@ -51,90 +194,160 @@ async function scanQRImage() {
   reader.readAsDataURL(file);
 }
 
-function parseQR() {
-  const qr = document.getElementById("qrtext").value;
-  const upiInput = document.getElementById("upi");
+/* ================================
+   PAY
+================================ */
+async function pay() {
+  if (activeTxId) return;
 
-  if (!qr) {
-    alert("Paste QR text first");
+  const upi = document.getElementById("upi").value;
+  const amount = Number(document.getElementById("amount").value);
+  const resBox = document.getElementById("result");
+
+  if (!upi || !amount || !currentRate) return;
+
+  if (currentBalance < amount * currentRate) {
+    resBox.textContent = "❌ Insufficient demo balance";
     return;
   }
 
-  try {
-    const params = new URL(qr).searchParams;
-    const upiId = params.get("pa");
+  setExecutionStatus("CREATED");
+  lockPayButton(true);
 
-    if (!upiId) {
-      alert("UPI ID not found in QR");
-      return;
-    }
+  const payload = {
+    user_id: DEMO_USER_ID,
+    upi_id: upi,
+    crypto_amount: amount,
+  };
 
-    upiInput.value = upiId;
-  } catch {
-    alert("Invalid QR format");
+  const res = await fetch("/pay", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${localStorage.getItem("token")}`,
+      "X-Idempotency-Key": crypto.randomUUID(),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  resBox.textContent = JSON.stringify(data, null, 2);
+
+  if (data.transaction_id) {
+    activeTxId = data.transaction_id;
+    pollExecutionState(activeTxId);
+  } else {
+    lockPayButton(false);
   }
 }
 
-async function pay() {
-  const upi = document.getElementById("upi").value;
-  const amount = document.getElementById("amount").value;
-
-  const resBox = document.getElementById("result");
-  resBox.textContent = "Processing...";
-
-  try {
-    const res = await fetch("/pay", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: "6364eeb3-a710-4df6-b546-b80adabe1c75",
-        upi_id: upi,
-        crypto_amount: Number(amount),
-      }),
-    });
-
-    const data = await res.json();
-    resBox.textContent = JSON.stringify(data, null, 2);
-
-    loadHistory(); // STEP 39.3 — refresh after pay
-  } catch (err) {
-    resBox.textContent = err.message;
-  }
-}
-
+/* ================================
+   HISTORY
+================================ */
 async function loadHistory() {
   const box = document.getElementById("history");
-  box.textContent = "Loading...";
+  box.innerHTML = "Loading…";
 
   try {
     const res = await fetch("/transactions?limit=5");
-    const data = await res.json();
+    const list = await res.json();
 
-    if (!data.length) {
-      box.textContent = "No transactions yet.";
+    if (!Array.isArray(list) || list.length === 0) {
+      box.innerHTML = "No transactions yet.";
       return;
     }
 
-    box.innerHTML = data
-      .map(
-        (tx) => `
-      <div style="border:1px solid #1f2937; border-radius:6px; padding:8px; margin-bottom:6px;">
-        <div><b>UPI:</b> ${tx.upi_id || "-"}</div>
-        <div><b>Crypto:</b> ${tx.crypto_amount} USDT</div>
-        <div><b>INR:</b> ₹${tx.inr_amount}</div>
-        <div><b>Rate:</b> ${tx.rate_used}</div>
-        <div><b>Status:</b> ${tx.payout_status}</div>
-        <div style="font-size:11px; opacity:0.7;">
-          ${new Date(tx.created_at).toLocaleString()}
+    box.innerHTML = list.map((tx) => {
+      const state = renderStatus(tx.execution_state);
+      const badge =
+        state === "FAILED"
+          ? "failed"
+          : state === "SUCCESS"
+          ? "success"
+          : "pending";
+
+      return `
+        <div class="tx-card">
+          <div><b>UPI:</b> ${tx.upi_id ?? "—"}</div>
+          <div><b>Crypto:</b> ${tx.crypto_amount ?? "—"} USDT</div>
+          <div><b>INR:</b> ₹${tx.inr_amount ?? "—"}</div>
+
+          <div class="execution-row">
+            <span class="badge badge-${badge}">
+              ${state}
+            </span>
+
+            ${
+              state === "FAILED"
+                ? `<button class="retry-btn" onclick="retryExecution('${tx.id}')">Retry</button>`
+                : ""
+            }
+          </div>
+
+          <a href="#" onclick="viewTimeline('${tx.id}')">
+            View execution timeline
+          </a>
         </div>
-      </div>
-    `
-      )
-      .join("");
+      `;
+    }).join("");
   } catch {
-    box.textContent = "Failed to load history.";
+    box.innerHTML = "Failed to load history.";
   }
 }
 
-// STEP 39.3 — auto-load on page load
+/* ================================
+   TIMELINE
+================================ */
+async function viewTimeline(txId) {
+  const res = await fetch(`/execution/${txId}/timeline`);
+  const timeline = await res.json();
+
+  const body = document.getElementById("timelineBody");
+
+  body.innerHTML = Array.isArray(timeline) && timeline.length
+    ? `
+      <div class="timeline">
+        ${timeline.map(row => `
+          <div class="timeline-row">
+            <div class="timeline-state">${row.to_state}</div>
+            <div class="timeline-reason">${row.reason || ""}</div>
+            <div class="timeline-time">
+              ${new Date(row.created_at).toLocaleString()}
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    `
+    : "<p>No timeline found.</p>";
+
+  document.getElementById("timelineModal").classList.remove("hidden");
+}
+
+function closeTimeline() {
+  document.getElementById("timelineModal").classList.add("hidden");
+}
+
+/* ================================
+   RETRY
+================================ */
+async function retryExecution(txId) {
+  const res = await fetch(`/execution/${txId}/retry`, { method: "POST" });
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.error || "Retry not allowed");
+    return;
+  }
+
+  setExecutionStatus("CREATED");
+  pollExecutionState(txId);
+}
+
+/* ================================
+   INIT
+================================ */
+setExecutionStatus(null);
+lockPayButton(false);
+loadDemoBalance();
+loadLiveRate();
 loadHistory();
