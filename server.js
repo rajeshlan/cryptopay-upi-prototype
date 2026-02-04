@@ -15,13 +15,14 @@ const { runExecution } = require("./execution/engine");
 // =======================
 const payRoute = require("./routes/pay");
 const txRoute = require("./routes/transactions");
-const executionRoutes = require("./routes/execution");
+const executionRoutes = require("./routes/execution");          // ✅ execution API
 const executionAuditRoutes = require("./routes/executionAudit");
 const demoRoutes = require("./routes/demo");
 const rateRoutes = require("./routes/rate");
 const webhookRoutes = require("./routes/webhooks");
 const auditRoutes = require("./routes/audit");
 const authRoutes = require("./routes/auth");
+const adminRoutes = require("./routes/admin");                  // 🔌 ADMIN
 
 const app = express();
 
@@ -62,12 +63,21 @@ app.use("/auth", authRoutes);
 app.use("/pay", payRoute);
 app.use("/transactions", txRoute);
 
+// 🔑 Execution APIs
 app.use("/execution", executionRoutes);
 app.use("/execution", executionAuditRoutes);
 
 app.use("/audit", auditRoutes);
 app.use("/demo", demoRoutes);
 app.use("/rate", rateRoutes);
+
+// 🔌 ADMIN (observability / ops / tooling)
+app.use("/admin", adminRoutes);
+
+// =======================
+// PAYOUT WEBHOOK (PROVIDER-AGNOSTIC)
+// =======================
+app.use("/webhooks", require("./routes/webhooks/payout"));
 
 // =======================
 // RAZORPAYX WEBHOOK (RAW BODY REQUIRED)

@@ -10,11 +10,12 @@ const verifySignature = require("../middleware/verifySignature");
 const { fetchUsdtInr } = require("../services/rateService");
 const { debitWallet } = require("../services/ledgerService");
 
+// ✅ MANDATORY: execution engine
+const { runExecution } = require("../execution/engine");
+
 /**
  * POST /pay
  * Fully idempotent payment initiation
- * ❗ Execution is NOT triggered here
- * ❗ Watchdog is the sole executor
  */
 router.post(
   "/",
@@ -87,8 +88,15 @@ router.post(
 
       await client.query("COMMIT");
 
-      // ❌ NO execution trigger here
-      // ✅ Watchdog will pick it up safely
+      // 🚀 START EXECUTION (SAFE, ASYNC, IDEMPOTENT)
+      setImmediate(() => {
+        runExecution(transactionId).catch((err) => {
+          console.error(
+            "EXECUTION START FAILED:",
+            err.message
+          );
+        });
+      });
 
       return res.json({
         transaction_id: transactionId,

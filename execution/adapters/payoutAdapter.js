@@ -1,19 +1,28 @@
 // execution/adapters/payoutAdapter.js
-const { simulatePayout } = require("../sandbox/payoutSandbox");
+const { recordTransition } = require("../audit/executionTimeline");
+const { STATE } = require("../states");
 
-async function realPayout() {
-  // 🔒 Placeholder for RazorpayX / Cashfree / Bank API
-  return true;
+/**
+ * Simulated payout adapter
+ * Sandbox-only — immediately finalizes payout
+ */
+async function executePayout({ transactionId, upi, amount }) {
+  console.log(
+    `💸 [SIMULATED PAYOUT] tx=${transactionId} upi=${upi} amount=${amount}`
+  );
+
+  // 🔥 THIS WAS MISSING — advance execution state
+  await recordTransition({
+    transactionId,
+    fromState: STATE.PAYOUT_PENDING,
+    toState: STATE.PAYOUT_SUCCESS,
+    reason: "Simulated payout completed",
+  });
+
+  return {
+    success: true,
+    provider_ref: "SIMULATED_OK",
+  };
 }
 
-async function payout() {
-  const mode = process.env.EXECUTION_MODE || "sandbox";
-
-  if (mode === "real") {
-    return realPayout();
-  }
-
-  return simulatePayout();
-}
-
-module.exports = { payout };
+module.exports = { executePayout };

@@ -2,7 +2,14 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../config/db");
-const { recordTransition } = require("../execution/audit/executionTimeline");
+
+const {
+  recordTransition,
+} = require("../execution/audit/executionTimeline");
+
+const {
+  promoteExecutionState,
+} = require("../execution/audit/promoteExecutionState");
 
 router.post("/:provider", async (req, res) => {
   const provider = req.params.provider;
@@ -26,7 +33,17 @@ router.post("/:provider", async (req, res) => {
       ]
     );
 
+    // ============================
+    // PAYOUT SUCCESS
+    // ============================
     if (transactionId && payload.event === "PAYOUT_SUCCESS") {
+      // 1️⃣ Promote canonical state
+      await promoteExecutionState(
+        transactionId,
+        "PAYOUT_SUCCESS"
+      );
+
+      // 2️⃣ Record audit trail
       await recordTransition({
         transactionId,
         fromState: "PAYOUT_PENDING",
@@ -35,7 +52,17 @@ router.post("/:provider", async (req, res) => {
       });
     }
 
+    // ============================
+    // PAYOUT FAILED
+    // ============================
     if (transactionId && payload.event === "PAYOUT_FAILED") {
+      // 1️⃣ Promote canonical state
+      await promoteExecutionState(
+        transactionId,
+        "PAYOUT_FAILED"
+      );
+
+      // 2️⃣ Record audit trail
       await recordTransition({
         transactionId,
         fromState: "PAYOUT_PENDING",

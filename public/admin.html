@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CryptoPay Admin</title>
+  <style>
+    body { font-family: system-ui; background:#0f172a; color:#e5e7eb; padding:20px }
+    h2 { margin-top:30px }
+    pre { background:#020617; padding:12px; border-radius:6px; overflow:auto }
+    .ok { color:#22c55e }
+    .warn { color:#facc15 }
+    .bad { color:#ef4444 }
+  </style>
+</head>
+<body>
+
+<h1>🛠 CryptoPay Admin</h1>
+
+<h2>System Health</h2>
+<pre id="health"></pre>
+
+<h2>Watchdog (latest)</h2>
+<pre id="watchdog"></pre>
+
+<h2>Recent Executions</h2>
+<pre id="executions"></pre>
+
+<script>
+async function load() {
+  document.getElementById("health").textContent =
+    JSON.stringify(await fetch("/admin/health").then(r=>r.json()), null, 2);
+
+  document.getElementById("watchdog").textContent =
+    JSON.stringify(await fetch("/admin/watchdog").then(r=>r.json()), null, 2);
+
+  document.getElementById("executions").textContent =
+    JSON.stringify(await fetch("/admin/executions").then(r=>r.json()), null, 2);
+}
+
+load();
+</script>
+
+</body>
+</html>

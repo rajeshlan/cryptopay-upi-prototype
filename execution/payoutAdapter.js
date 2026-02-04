@@ -2,13 +2,14 @@
 
 const { executeSimulatedPayout } = require("./providers/simulated");
 const { executeCashfreePayout } = require("./providers/cashfree");
-// const { executeRazorpayXPayout } = require("./providers/razorpayx"); // future
+const { payoutViaRazorpayX } = require("../providers/razorpayx");
 
 /**
  * Canonical payout adapter
  *
- * Engine calls this once.
- * This function decides HOW the payout happens.
+ * Engine calls this exactly once.
+ * This function ONLY decides how the payout is triggered.
+ * Outcome is finalized via webhook (or simulation handler).
  */
 async function executePayout({ transactionId, amount, upi }) {
   const mode = process.env.PAYOUT_MODE || "SIMULATION";
@@ -26,7 +27,7 @@ async function executePayout({ transactionId, amount, upi }) {
   }
 
   // ─────────────────────────────────────────────
-  // 🧾 REAL SANDBOX MODE
+  // 🧾 REAL / SANDBOX MODE
   // ─────────────────────────────────────────────
   if (mode === "SANDBOX") {
     if (provider === "CASHFREE") {
@@ -37,13 +38,13 @@ async function executePayout({ transactionId, amount, upi }) {
       });
     }
 
-    // if (provider === "RAZORPAYX") {
-    //   return executeRazorpayXPayout({
-    //     transactionId,
-    //     amount,
-    //     upi,
-    //   });
-    // }
+    if (provider === "RAZORPAYX") {
+      return payoutViaRazorpayX({
+        transactionId,
+        amount,
+        upi,
+      });
+    }
 
     throw new Error("UNSUPPORTED_PAYOUT_PROVIDER");
   }

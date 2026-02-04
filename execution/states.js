@@ -1,6 +1,8 @@
 // execution/states.js
 
-// ✅ Canonical state names (single source of truth)
+// ============================
+// CANONICAL STATE NAMES
+// ============================
 const STATE = {
   CREATED: "CREATED",
   RATE_LOCKED: "RATE_LOCKED",
@@ -9,14 +11,34 @@ const STATE = {
   PAYOUT_PENDING: "PAYOUT_PENDING",
 
   PAYOUT_SUCCESS: "PAYOUT_SUCCESS",
-
   PAYOUT_FAILED: "PAYOUT_FAILED",
+
   EXCHANGE_FAILED: "EXCHANGE_FAILED",
   FAILED: "FAILED",
   UNKNOWN_FAILED: "UNKNOWN_FAILED",
+
+  // future-safe
+  CANCELLED: "CANCELLED",
+  EXPIRED: "EXPIRED",
 };
 
-// ✅ Allowed transitions graph
+// ============================
+// TERMINAL STATES (AUTHORITY)
+// ============================
+const TERMINAL_STATES = new Set([
+  STATE.PAYOUT_SUCCESS,
+  STATE.PAYOUT_FAILED,
+  STATE.CANCELLED,
+  STATE.EXPIRED,
+]);
+
+function isTerminalState(state) {
+  return TERMINAL_STATES.has(state);
+}
+
+// ============================
+// ALLOWED TRANSITIONS GRAPH
+// ============================
 const STATE_GRAPH = {
   [STATE.CREATED]: [STATE.RATE_LOCKED, STATE.FAILED],
   [STATE.RATE_LOCKED]: [STATE.CONVERSION_PENDING],
@@ -36,9 +58,13 @@ const STATE_GRAPH = {
   [STATE.EXCHANGE_FAILED]: [],
   [STATE.FAILED]: [],
   [STATE.UNKNOWN_FAILED]: [],
+  [STATE.CANCELLED]: [],
+  [STATE.EXPIRED]: [],
 };
 
-// 🔁 Retry rules
+// ============================
+// RETRY RULES
+// ============================
 function isRetryAllowed(state) {
   return [
     STATE.EXCHANGE_FAILED,
@@ -50,5 +76,7 @@ function isRetryAllowed(state) {
 module.exports = {
   STATE,
   STATE_GRAPH,
+  TERMINAL_STATES,
+  isTerminalState,
   isRetryAllowed,
 };

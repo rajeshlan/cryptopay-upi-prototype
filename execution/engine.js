@@ -14,7 +14,11 @@ const { recordTransition } = require("./audit/executionTimeline");
 const { rebuildStateFromTimeline } = require("./replay/rebuildState");
 const { postDoubleEntry } = require("../services/ledgerAccounting");
 
-const { STATE, STATE_GRAPH } = require("./states");
+const {
+  STATE,
+  STATE_GRAPH,
+  isTerminalState, // ✅ SINGLE AUTHORITY
+} = require("./states");
 
 /* ================================
    STATE SAFETY
@@ -47,9 +51,26 @@ function maybeCrash(state) {
 }
 
 /* ================================
-   EXECUTION ENGINE (FIXED)
+   EXECUTION ENGINE (PHASE 5.1)
 ================================ */
 async function runExecution(transactionId) {
+  // 🔒 ABSOLUTE TERMINAL GUARD — MUST RUN FIRST
+  const { rows } = await pool.query(
+    `SELECT execution_state FROM transactions WHERE id = $1`,
+    [transactionId]
+  );
+
+  if (!rows.length) return;
+
+  const currentState = rows[0].execution_state;
+
+  if (isTerminalState(currentState)) {
+    console.log(
+      `⏭️ Skipping terminal tx=${transactionId} state=${currentState}`
+    );
+    return;
+  }
+
   let heartbeat;
 
   try {
@@ -60,48 +81,52 @@ async function runExecution(transactionId) {
       10_000
     );
 
-    // 🔑 CORRECT CONTRACT HANDLING
+    // 🔑 Rebuild execution intent (timeline-driven)
     const {
       terminal_state,
       resume_state,
     } = await rebuildStateFromTimeline(transactionId);
 
-    // ⛔ Already completed — do nothing
-    if (terminal_state === STATE.PAYOUT_SUCCESS) {
+    // Defensive — timeline already shows terminal
+    if (isTerminalState(terminal_state)) {
       return { transactionId, state: terminal_state };
     }
 
-    // Decide where to start
-    let state = resume_state;
+    let current = resume_state;
 
     // Brand new transaction
-    if (!state) {
-      state = await transition(transactionId, null, STATE.CREATED, "Init");
+    if (!current) {
+      current = await transition(
+        transactionId,
+        null,
+        STATE.CREATED,
+        "Init"
+      );
     }
 
     /* ============================
        EXECUTION FLOW
     ============================ */
 
-    if (state === STATE.CREATED) {
-      state = await transition(
+    if (current === STATE.CREATED) {
+      current = await transition(
         transactionId,
-        state,
+        current,
         STATE.RATE_LOCKED,
         "Rate locked"
       );
     }
 
-    if (state === STATE.RATE_LOCKED) {
-      state = await transition(
+    if (current === STATE.RATE_LOCKED) {
+      current = await transition(
         transactionId,
-        state,
+        current,
         STATE.CONVERSION_PENDING,
         "Conversion started"
       );
     }
 
-    if (state === STATE.CONVERSION_PENDING) {
+    if (current === STATE.CONVERSION_PENDING) {
       maybeCrash(STATE.CONVERSION_PENDING);
 
       const { cryptoAmount, inrAmount } =
@@ -125,28 +150,33 @@ async function runExecution(transactionId) {
         ],
       });
 
-      state = await transition(
+      current = await transition(
         transactionId,
-        state,
+        current,
         STATE.CONVERSION_CONFIRMED,
         "Conversion confirmed"
       );
     }
 
-    if (state === STATE.CONVERSION_CONFIRMED) {
-      state = await transition(
+    if (current === STATE.CONVERSION_CONFIRMED) {
+      current = await transition(
         transactionId,
-        state,
+        current,
         STATE.PAYOUT_PENDING,
         "Payout initiated"
       );
     }
 
-    if (state === STATE.PAYOUT_PENDING) {
+    // ✅ FIXED PAYOUT BLOCK (SIMULATION-AWARE)
+    if (current === STATE.PAYOUT_PENDING) {
       maybeCrash(STATE.PAYOUT_PENDING);
 
       const { rows } = await pool.query(
-        `SELECT upi_id, inr_amount FROM transactions WHERE id = $1`,
+        `
+        SELECT upi_id, inr_amount
+        FROM transactions
+        WHERE id = $1
+        `,
         [transactionId]
       );
 
@@ -156,33 +186,23 @@ async function runExecution(transactionId) {
         upi: rows[0].upi_id,
       });
 
-      await postDoubleEntry({
-        transactionId,
-        entries: [
-          {
-            account: "SYSTEM_INR",
-            direction: "DEBIT",
-            amount: rows[0].inr_amount,
-            currency: "INR",
-          },
-          {
-            account: "PAYOUT",
-            direction: "CREDIT",
-            amount: rows[0].inr_amount,
-            currency: "INR",
-          },
-        ],
-      });
+      // ✅ SIMULATION MODE → ENGINE FINALIZES
+      if (process.env.PAYOUT_MODE === "SIMULATION") {
+        current = await transition(
+          transactionId,
+          STATE.PAYOUT_PENDING,
+          STATE.PAYOUT_SUCCESS,
+          "Simulated payout success"
+        );
 
-      state = await transition(
-        transactionId,
-        state,
-        STATE.PAYOUT_SUCCESS,
-        "Payout successful"
-      );
+        return { transactionId, state: current };
+      }
+
+      // REAL MODE → webhook decides
+      return { transactionId, state: STATE.PAYOUT_PENDING };
     }
 
-    return { transactionId, state };
+    return { transactionId, state: current };
   } finally {
     if (heartbeat) clearInterval(heartbeat);
     await releaseExecutionLock(transactionId);
